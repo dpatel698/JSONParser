@@ -1,0 +1,4 @@
+Summary:
+
+Lessons:
+1. Parsing two stages: Lexical Analysis (Tokenizing sequences) Syntactic Analysis (Matching tokens to a formal grammar)
