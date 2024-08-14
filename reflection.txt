@@ -3,3 +3,5 @@ Summary:
 Lessons:
 1. Parsing two stages: Lexical Analysis (Tokenizing sequences) Syntactic Analysis (Matching tokens to a formal grammar)
 2. Open files in try-except clauses
+3. The correct approach to process the json string is to go character by character
+   and keep track of the index in a class variable within a parser class

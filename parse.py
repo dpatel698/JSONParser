@@ -2,51 +2,96 @@
 import sys
 
 
-def is_JSONString(token):
-    return token.startswith("\"") and token.endswith("\"")
+class JSONParser:
 
+    def __init__(self, text):
+        self.i = 0
+        self.text = text
 
-def is_JSONBoolean(token):
-    return token == "true" or token == "false"
+    def parse(self):
+        self.text = self.text.strip()
+        return self.process_object()
 
+    def current_char(self):
+        if self.i < len(self.text):
+            return self.text[self.i]
+        return ""
 
-def is_JSONNull(token):
-    return token == "null"
+    def process_object(self):
+        obj = {}
+        if self.text[self.i] != "{":
+            raise ValueError("JSONObject Missing {")
+            return None
+        self.i += 1
 
+        while True:
+            self.skip_whitespace()
 
-def json_parse(text):
-    if not (text.startswith("{") and text.endswith("}")):
-        print("Error JSON Invalid : { or } missing")
-        sys.exit(1)
-    # Tokenize key-value pairs
-    text = text[1:len(text)-1]
-    tokens = text.split(",")
-    for t in tokens:
-        key_value = t.strip().split(": ")
+            if self.current_char() == "}":
+                self.i += 1
+                return obj
 
-        if len(key_value) != 2 or not is_JSONString(key_value[0]):
-            print("Error JSON Invalid : \"key\": value format violated")
-            sys.exit(1)
-        # Checks for string
-        if key_value[1].startswith("\""):
-            if not is_JSONString(key_value[1]):
-                print(f"Error JSON Invalid : \" {key_value[1]} \" improperly formatted")
-                sys.exit(1)
-            continue
-        # Checks for a numeric
-        if key_value[1][0].isnumeric():
-            if not key_value[1].isnumeric():
-                print(f"Error JSON Invalid : {key_value[1]} is not numeric")
-            continue
-        # Checks for boolean or null
-        if not (is_JSONBoolean(key_value[1]) or is_JSONNull(key_value[1])):
-            print(f"Error JSON Invalid : \" {key_value[1]} \" improperly formatted")
-            sys.exit(1)
+            key = self.process_string()
+            self.skip_whitespace()
 
-    print("Success!")
-    sys.exit(0)
+            if self.current_char() != ":":
+                raise ValueError("Expected : after key")
+            
+            self.skip_whitespace()
+            value = self.process_value()
 
+    def skip_whitespace(self):
+        while self.i < len(self.text) and self.current_char().isspace():
+            self.i += 1
 
+    def process_string(self):
+        if self.current_char() != "\"":
+            raise ValueError("String missing \"")
+        self.i += 1
+        start = self.i
+        while self.current_char() != '"':
+            if self.current_char() == '\\':
+                self.i += 2
+            else:
+                self.i += 1
+        end = self.i
+        self.i += 1  # Skip closing quote
+        return self.text[start:end]
+
+    def process_value(self):
+        if self.current_char() == "{":
+            return self.process_object()
+        if self.current_char() == "[":
+            return self.process_array()
+        if self.current_char().isdigit():
+            return self.process_number()
+
+    def process_array(self):
+        arr = []
+        self.i += 1
+
+        while True:
+            self.skip_whitespace()
+
+            if self.current_char() == "]":
+                self.i += 1
+                return arr
+
+            value = self.process_value()
+            arr.append(value)
+            self.skip_whitespace()
+
+            if self.current_char() == ",":
+                self.i += 1
+            elif self.current_char() != ']':
+                raise ValueError("Expected ',' or ']' in array")
+
+    def process_number(self):
+        start = self.i
+        while self.current_char().isdigit():
+            self.skip_whitespace()
+            if not self.current_char().isdigit():
+                raise ValueError("Digit not properly formatted")
 
 
 if __name__ == "__main__":
@@ -56,10 +101,16 @@ if __name__ == "__main__":
     try:
         with open(sys.argv[1], "r") as file:
             json_text = file.read()
-            json_parse(json_text.strip())
+            try:
+                parser = JSONParser(json_text)
+                parsed_json = parser.parse()
+                print("Success!\n")
+                print(parsed_json)
+                sys.exit(0)
+            except Exception as e:
+                print("Fail!\n")
+                print(e)
+                sys.exit(1)
     except FileNotFoundError:
         print(f"parse: {sys.argv[1]}: No such file or directory")
         sys.exit(1)
-
-
-
